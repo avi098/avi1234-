@@ -1,3 +1,0 @@
-First download the XAMPP Control Panel and turn on the myapache localhost.
-
-Past the file - TRAVEL BOOKING SYSTEM in Windows C - xampp - htdocs.
