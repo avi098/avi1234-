@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF GPT</title>
+
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+
+    <style>
+        body {
+            background: url('https://www.wallpapertip.com/wmimgs/167-1677724_technology-website-background-images-hd.jpg') center center fixed;
+            background-size: cover;
+        }
+
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.7); 
+        }
+
+        .navbar-brand {
+            color: #fff; 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">PDF GPT</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="h3 text-center text-dark"><center>PDF GPT</center></h1>
+                    </div>
+                    <div class="card-body">
+
+                        <form id="upload-form" action="/process" method="post" enctype="multipart/form-data">
+
+                            <div class="form-group">
+                                <label for="file">Upload PDF:</label>
+                                <input type="file" class="form-control-file" name="file" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="query">Enter your question:</label>
+                                <input type="text" class="form-control" name="query" required>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block">Get Answer</button>
+
+                        </form>
+
+                        <div id="answer-container" class="mt-4"></div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous"></script>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var form = e.target;
+            var formData = new FormData(form);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if ('answer' in data) {
+                    document.getElementById('answer-container').innerHTML = "<h2>Answer:</h2><p>" + data.answer + "</p>";
+                } else {
+                    document.getElementById('answer-container').innerHTML = "<p>Error: " + data.error + "</p>";
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+
+</body>
+</html>
