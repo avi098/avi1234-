@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Submit Text to IPFS</title>
+</head>
+<body>
+    <h1>Submit Text to IPFS</h1>
+    <form method="POST" action="{% url 'submit_text' %}">
+        {% csrf_token %}
+        <label for="text">Enter Text:</label><br>
+        <textarea name="text" rows="4" cols="50" required></textarea><br><br>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
