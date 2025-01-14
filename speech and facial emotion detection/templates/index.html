@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Psychiatric Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      .recording-animation {
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      .chat-message {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeIn 0.5s ease forwards;
+      }
+      @keyframes fadeIn {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">
+          AI Therapist Assistant
+        </h1>
+        <p class="text-gray-600">
+          Real-time emotional analysis and therapeutic conversation
+        </p>
+      </div>
+
+      <!-- Main Content Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Left Column - Video and Controls -->
+        <div class="bg-white rounded-xl shadow-xl p-6">
+          <!-- Video Feed with Error Handling -->
+          <div
+            class="relative mb-6 bg-gray-100 rounded-lg overflow-hidden"
+            style="min-height: 360px"
+          >
+            <div
+              id="videoLoadingSpinner"
+              class="absolute inset-0 flex items-center justify-center bg-gray-100 z-10"
+            >
+              <div
+                class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"
+              ></div>
+            </div>
+            <img
+              id="videoFeed"
+              src="/video_feed"
+              alt="Video feed"
+              class="w-full h-full object-cover"
+              style="min-height: 360px"
+              onload="handleVideoLoad()"
+              onerror="handleVideoError()"
+            />
+            <div
+              id="recordingIndicator"
+              class="hidden absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-full recording-animation"
+            >
+              Recording
+            </div>
+          </div>
+
+          <!-- Enhanced Controls -->
+          <div class="flex flex-wrap gap-4 justify-center mb-6">
+            <button
+              id="recordButton"
+              class="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled
+            >
+              <i class="fas fa-microphone"></i>
+              <span>Hold to Speak</span>
+            </button>
+            <button
+              id="stopCameraButton"
+              class="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors"
+            >
+              <i class="fas fa-video-slash"></i>
+              <span>Stop Camera</span>
+            </button>
+          </div>
+
+          <!-- Status and Timer with Error Display -->
+          <div class="space-y-2">
+            <div
+              id="errorDisplay"
+              class="hidden p-3 bg-red-100 text-red-700 rounded-lg"
+            ></div>
+            <div class="flex justify-between items-center">
+              <div id="status" class="text-gray-700">
+                Status:
+                <span class="font-semibold text-gray-900">Initializing...</span>
+              </div>
+              <div id="timer" class="hidden text-red-500 font-semibold">
+                00:00
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column - Enhanced Chat Interface -->
+        <div class="bg-white rounded-xl shadow-xl p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <i class="fas fa-user-md text-2xl text-indigo-600"></i>
+            <h2 class="text-xl font-semibold">Therapeutic Conversation</h2>
+          </div>
+
+          <!-- Chat Container with Loading State -->
+          <div
+            id="chatContainer"
+            class="h-[500px] overflow-y-auto mb-4 space-y-4 p-4 bg-gray-50 rounded-lg"
+          >
+            <div class="chat-message bg-indigo-50 p-4 rounded-lg">
+              <div class="flex items-start gap-3">
+                <div class="bg-indigo-100 rounded-full p-2">
+                  <i class="fas fa-user-md text-indigo-600"></i>
+                </div>
+                <div>
+                  <p class="text-gray-800">
+                    Hello! I'm your AI psychiatric assistant. I'll analyze your
+                    emotions and speech to provide supportive feedback. Feel
+                    free to share how you're feeling.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Enhanced Emotion Display -->
+          <div
+            id="currentEmotionContainer"
+            class="mb-4 p-4 bg-gray-50 rounded-lg"
+          >
+            <div class="flex items-center gap-2">
+              <i class="fas fa-heart text-pink-500"></i>
+              <span class="font-semibold">Current Emotion:</span>
+              <span id="currentEmotion" class="text-indigo-600"
+                >Detecting...</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let mediaRecorder;
+      let audioChunks = [];
+      let recordingStartTime;
+      let timerInterval;
+      let lastDetectedEmotion = null;
+      let reconnectAttempts = 0;
+      const MAX_RECONNECT_ATTEMPTS = 3;
+
+      // Enhanced video handling
+      function handleVideoLoad() {
+        document.getElementById("videoLoadingSpinner").style.display = "none";
+      }
+
+      function handleVideoError() {
+        const videoFeed = document.getElementById("videoFeed");
+        const spinner = document.getElementById("videoLoadingSpinner");
+        videoFeed.style.display = "none";
+        spinner.innerHTML =
+          '<div class="text-red-500 text-center"><i class="fas fa-exclamation-circle text-2xl"></i><p class="mt-2">Camera unavailable</p><button onclick="retryVideoConnection()" class="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-lg">Retry Connection</button></div>';
+      }
+
+      async function retryVideoConnection() {
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttempts++;
+          const videoFeed = document.getElementById("videoFeed");
+          const spinner = document.getElementById("videoLoadingSpinner");
+
+          spinner.innerHTML =
+            '<div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>';
+          videoFeed.style.display = "block";
+          videoFeed.src = `/video_feed?retry=${Date.now()}`;
+        } else {
+          showError(
+            "Maximum reconnection attempts reached. Please refresh the page."
+          );
+        }
+      }
+
+      // Enhanced audio recording initialization
+      async function initializeRecording() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+          mediaRecorder = new MediaRecorder(stream);
+
+          mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+          };
+
+          mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+            await processAudio(audioBlob);
+          };
+
+          updateStatus("Ready", "green");
+          document.getElementById("recordButton").disabled = false;
+          hideError();
+        } catch (error) {
+          showError(
+            "Microphone access denied. Please check your browser permissions."
+          );
+          updateStatus("Microphone access denied", "red");
+          document.getElementById("recordButton").disabled = true;
+          console.error("Microphone access error:", error);
+        }
+      }
+
+      // Enhanced audio processing
+      async function processAudio(audioBlob) {
+        const formData = new FormData();
+        formData.append("file", audioBlob, "recording.wav");
+
+        updateStatus("Processing", "blue");
+        showLoadingIndicator();
+
+        try {
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            updateStatus("Ready", "green");
+            hideError();
+            addChatMessage(
+              "user",
+              data.transcript,
+              data.emotion_data?.face_emotion
+            );
+
+            if (data.psychiatric_response) {
+              setTimeout(() => {
+                addChatMessage("assistant", data.psychiatric_response);
+              }, 500);
+            }
+          } else {
+            throw new Error(data.error || "Processing failed");
+          }
+        } catch (error) {
+          showError(`Error: ${error.message}`);
+          updateStatus("Error occurred", "red");
+          console.error("Processing error:", error);
+        } finally {
+          hideLoadingIndicator();
+        }
+      }
+
+      // UI Helpers
+      function showError(message) {
+        const errorDisplay = document.getElementById("errorDisplay");
+        errorDisplay.textContent = message;
+        errorDisplay.classList.remove("hidden");
+      }
+
+      function hideError() {
+        document.getElementById("errorDisplay").classList.add("hidden");
+      }
+
+      function showLoadingIndicator() {
+        // Add loading indicator implementation
+      }
+
+      function hideLoadingIndicator() {
+        // Remove loading indicator implementation
+      }
+
+      function updateStatus(message, color) {
+        const colors = {
+          red: "text-red-600",
+          green: "text-green-600",
+          blue: "text-blue-600",
+        };
+        const status = document.getElementById("status");
+        status.innerHTML = `Status: <span class="font-semibold ${colors[color]}">${message}</span>`;
+      }
+
+      function updateTimer() {
+        const timer = document.getElementById("timer");
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60)
+          .toString()
+          .padStart(2, "0");
+        const seconds = (elapsed % 60).toString().padStart(2, "0");
+        timer.textContent = `${minutes}:${seconds}`;
+      }
+
+      function addChatMessage(role, message, emotion = null) {
+        const chatContainer = document.getElementById("chatContainer");
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `chat-message ${
+          role === "user" ? "bg-white" : "bg-indigo-50"
+        } p-4 rounded-lg`;
+
+        messageDiv.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="bg-${
+                      role === "user" ? "gray" : "indigo"
+                    }-100 rounded-full p-2">
+                        <i class="fas fa-${
+                          role === "user" ? "user" : "user-md"
+                        } text-${role === "user" ? "gray" : "indigo"}-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-gray-800">${message}</p>
+                        ${
+                          emotion
+                            ? `<p class="text-sm text-indigo-600 mt-1">Detected emotion: ${emotion}</p>`
+                            : ""
+                        }
+                        <div class="text-xs text-gray-500 mt-1">${new Date().toLocaleTimeString()}</div>
+                    </div>
+                </div>
+            `;
+
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        if (emotion && emotion !== lastDetectedEmotion) {
+          document.getElementById("currentEmotion").textContent = emotion;
+          lastDetectedEmotion = emotion;
+        }
+      }
+
+      // Event Listeners
+      document
+        .getElementById("recordButton")
+        .addEventListener("mousedown", () => {
+          if (mediaRecorder && mediaRecorder.state === "inactive") {
+            audioChunks = [];
+            mediaRecorder.start();
+            recordingStartTime = Date.now();
+            timerInterval = setInterval(updateTimer, 1000);
+            document
+              .getElementById("recordingIndicator")
+              .classList.remove("hidden");
+            document.getElementById("timer").classList.remove("hidden");
+            updateStatus("Recording", "red");
+          }
+        });
+
+      document
+        .getElementById("recordButton")
+        .addEventListener("mouseup", () => {
+          if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+            clearInterval(timerInterval);
+            document
+              .getElementById("recordingIndicator")
+              .classList.add("hidden");
+            document.getElementById("timer").classList.add("hidden");
+          }
+        });
+
+      // Touch support
+      document
+        .getElementById("recordButton")
+        .addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          document
+            .getElementById("recordButton")
+            .dispatchEvent(new Event("mousedown"));
+        });
+
+      document
+        .getElementById("recordButton")
+        .addEventListener("touchend", (e) => {
+          e.preventDefault();
+          document
+            .getElementById("recordButton")
+            .dispatchEvent(new Event("mouseup"));
+        });
+
+      document
+        .getElementById("stopCameraButton")
+        .addEventListener("click", async () => {
+          try {
+            const response = await fetch("/stop_camera");
+            if (response.ok) {
+              handleVideoError();
+            }
+          } catch (error) {
+            console.error("Error stopping camera:", error);
+            showError("Failed to stop camera");
+          }
+        });
+
+      // Initialize the application
+      window.addEventListener("load", () => {
+        initializeRecording();
+      });
+    </script>
+  </body>
+</html>
